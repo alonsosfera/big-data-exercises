@@ -1,6 +1,8 @@
 package nearsoft.academy.bigdata.recommendation;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
@@ -19,7 +21,7 @@ public class MovieRecommender {
     private String file;
     private Hashtable<String, Integer> HashProduct = new Hashtable<String, Integer>();
     private Hashtable<String, Integer> HashUser = new Hashtable<String, Integer>();
-    private int users =1, products =1, reviews = 0;
+    private int users =0, products =0, reviews = 0;
 
     public MovieRecommender(String file) throws IOException{
         this.file = file;
@@ -27,7 +29,8 @@ public class MovieRecommender {
     }
 
     public String getData() throws IOException {
-        String thisProduct = null, thisUser = null;
+        int thisProduct =0, thisUser =0;
+        Files.deleteIfExists(Paths.get("Result.csv"));
         File result = new File("Result.csv");
         InputStream fileReader = new GZIPInputStream(new FileInputStream(this.file));
         BufferedReader br = new BufferedReader(new InputStreamReader(fileReader));
@@ -42,16 +45,23 @@ public class MovieRecommender {
                 sp = line.split(" ");
                 key = sp[0];
                 if (key.equals("product/productId:")) {
-                    thisProduct = sp[1];
-                    if (!HashProduct.containsKey(thisProduct)){
-                        HashProduct.put(thisProduct,1);
+                    value = sp[1];
+                    if (!HashProduct.containsKey(value)){
+                        HashProduct.put(value,products);
+                        //HashProduct.put(thisProduct,1);
+                        thisProduct = HashProduct.get(value);
                         products++;
+                    }else{
+                        thisProduct = HashProduct.get(value);
                     }
                 }else if (key.equals("review/userId:")){
-                    thisUser = sp[1];
-                    if (!HashUser.containsKey(thisUser)){
-                        HashUser.put(thisUser,1);
+                    value = sp[1];
+                    if (!HashUser.containsKey(value)){
+                        HashUser.put(value, users);
+                        thisUser = HashUser.get(value);
                         users++;
+                    }else{
+                        thisUser = HashUser.get(value);
                     }
                 }else if (key.equals("review/score:")){
                     String score = sp[1];
@@ -62,24 +72,47 @@ public class MovieRecommender {
         }
         br.close();
         bw.close();
-        return result.getAbsolutePath();
+        return null;
 
 
     }
 
     public int getTotalReviews() {
-        return 0;
+        return reviews;
     }
 
     public int getTotalProducts() {
-        return 0;
+        return products;
     }
 
     public int getTotalUsers() {
-        return 0;
+        return users;
     }
 
-    public List<String> getRecommendationsForUser(String a141HP4LYPWMSR) {
+    public List<String> getRecommendationsForUser(String user) throws IOException, TasteException {
+        DataModel model = new FileDataModel(new File("Result.csv"));
+        UserSimilarity similarity = new PearsonCorrelationSimilarity(model);
+        UserNeighborhood neighborhood = new ThresholdUserNeighborhood(0.1, similarity, model);
+        UserBasedRecommender recommender = new GenericUserBasedRecommender(model, neighborhood, similarity);
+
+        int userValue = HashUser.get(user);
+
+        List RecommendedProducts = new ArrayList<String>();
+        List<RecommendedItem> recommendations = recommender.recommend(userValue,3);
+        for (RecommendedItem recommendation : recommendations) {
+            RecommendedProducts.add(getKeyFromHT((int)recommendation.getItemID()));
+        }
+        return RecommendedProducts;
+    }
+
+    private String getKeyFromHT(int value) {
+        Enumeration e = HashProduct.keys();
+        while (e.hasMoreElements()) {
+            String key = (String) e.nextElement();
+            if (HashProduct.get(key)==value) {
+                return key;
+            }
+        }
         return null;
     }
 }
