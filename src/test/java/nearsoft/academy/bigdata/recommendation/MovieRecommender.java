@@ -20,6 +20,7 @@ import org.apache.mahout.cf.taste.similarity.UserSimilarity;
 public class MovieRecommender {
     private String file;
     private Hashtable<String, Integer> HashProduct = new Hashtable<String, Integer>();
+    private Hashtable<Integer, String> InvertedHashProduct = new Hashtable<Integer, String>();
     private Hashtable<String, Integer> HashUser = new Hashtable<String, Integer>();
     private int users =0, products =0, reviews = 0;
 
@@ -48,7 +49,7 @@ public class MovieRecommender {
                     value = sp[1];
                     if (!HashProduct.containsKey(value)){
                         HashProduct.put(value,products);
-                        //HashProduct.put(thisProduct,1);
+                        InvertedHashProduct.put(products,value);
                         thisProduct = HashProduct.get(value);
                         products++;
                     }else{
@@ -100,19 +101,8 @@ public class MovieRecommender {
         List RecommendedProducts = new ArrayList<String>();
         List<RecommendedItem> recommendations = recommender.recommend(userValue,3);
         for (RecommendedItem recommendation : recommendations) {
-            RecommendedProducts.add(getKeyFromHT((int)recommendation.getItemID()));
+            RecommendedProducts.add(InvertedHashProduct.get((int)recommendation.getItemID()));
         }
         return RecommendedProducts;
-    }
-
-    private String getKeyFromHT(int value) {
-        Enumeration e = HashProduct.keys();
-        while (e.hasMoreElements()) {
-            String key = (String) e.nextElement();
-            if (HashProduct.get(key)==value) {
-                return key;
-            }
-        }
-        return null;
     }
 }
